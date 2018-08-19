@@ -60,7 +60,7 @@ def plot():
             print('something bad happend')
         filename = plot_that(dip, strike)
         response = Response(
-                response=json.dumps({'msg': 'Plot has been created', 'link': filename}),
+                response=json.dumps({'message': 'Plot has been created', 'filename': filename}),
                 mimetype="application/json",
                 status=201
                 )
