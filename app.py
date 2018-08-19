@@ -4,7 +4,6 @@ import os
 from matplotlib import pyplot as plt
 from flask import (Flask, Response, jsonify, request, send_from_directory,
                    url_for)
-from werkzeug.utils import secure_filename
 import mplstereonet
 
 app = Flask(__name__)
