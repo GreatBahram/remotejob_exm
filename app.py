@@ -57,7 +57,7 @@ def plot():
             dip = int(request.form['dip'])
             strike = int(request.form['strike'])
         except:
-            print('something bad happend')
+            return jsonify({'message':'dip and strike should be integer.'}), 400
         filename = plot_that(dip, strike)
         response = Response(
                 response=json.dumps({'message': 'Plot has been created', 'filename': filename}),
@@ -82,4 +82,4 @@ def downloed_file(filename):
         return jsonify({'message': "File does not found"}), 404
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0', port=5000)
