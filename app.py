@@ -1,10 +1,11 @@
+# Standard library imports
 import json
 import os
 
-from matplotlib import pyplot as plt
-from flask import (Flask, Response, jsonify, request, send_from_directory,
-                   url_for)
+# Third-Party imports
 import mplstereonet
+from flask import Flask, Response, jsonify, request, url_for
+from matplotlib import pyplot as plt
 
 app = Flask(__name__)
 
@@ -43,7 +44,6 @@ def index():
     """List of routes for this API."""
     output = {
         'Post dip and strike': 'POST /plot',
-        'Download an image': 'GET /download/<filename>',
     }
     response = jsonify(output)
     return response
@@ -59,8 +59,9 @@ def plot():
         except:
             return jsonify({'message':'dip and strike should be integer.'}), 400
         filename = plot_that(dip, strike)
+        filepath = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'], filename)
         response = Response(
-                response=json.dumps({'message': 'Plot has been created', 'filename': filename}),
+                response=json.dumps({'filepath' :filepath}),
                 mimetype="application/json",
                 status=201
                 )
@@ -71,15 +72,6 @@ def plot():
             status=404
             )
     return response
-
-@app.route('/download/<filename>')
-def downloed_file(filename):
-    """Download a file."""
-    uploads = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
-    if os.path.exists(os.path.join(uploads, filename)):
-        return send_from_directory(directory=uploads, filename=filename)
-    else:
-        return jsonify({'message': "File does not found"}), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
