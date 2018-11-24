@@ -1,10 +1,11 @@
-# Standard library imports
 import json
 import os
+from hashlib import md5
+from threading import Thread
 
-# Third-Party imports
 import mplstereonet
-from flask import Flask, Response, jsonify, request, url_for
+from flask import (Flask, Response, jsonify, request, send_from_directory,
+                   url_for)
 from matplotlib import pyplot as plt
 
 app = Flask(__name__)
@@ -16,15 +17,19 @@ image_format = 'png'
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-def random_name():
+def random_name(dip, strike):
     """Return picture absolute path and also filename"""
-    filename = os.urandom(15).hex()
+    filename = md5('{}{}'.format(dip, strike).encode('utf-8')).hexdigest()
     filename = filename + '.' + image_format
     picture_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
     return picture_path, filename
 
-def plot_that(dip, strike):
+def async_plot(dip, strike):
+    picture_path, filename = random_name(dip, strike)
+    Thread(target=plot_that, args=(dip, strike, picture_path,)).start()
+    return filename
+
+def plot_that(dip, strike, picture_path):
     """ Plot the figure and save into app.config['UPLOAD_FOLDER'] directory """
     fig = plt.figure()
     ax = fig.add_subplot(121, projection='stereonet')
@@ -33,18 +38,19 @@ def plot_that(dip, strike):
     ax.pole(strike, dip, 'g^', markersize=18)
     ax.rake(strike, dip, -25)
     ax.grid()
-    picture_path, filename = random_name()
+    #picture_path, filename = random_name()
     plt.close('all')
     fig.savefig(picture_path, dpi=200, format=image_format)
+    #return filename
 
-    return filename
-
-@app.route('/')
+@app.route('/', methods=['GET'])
 def index():
     """List of routes for this API."""
     output = {
-        'Post dip and strike': 'POST /plot',
-    }
+            'Post dip and strike': 'POST /plot',
+            'Download specific filename': 'GET /download/{filename}',
+            }
+    
     response = jsonify(output)
     return response
 
@@ -58,10 +64,11 @@ def plot():
             strike = int(request.form['strike'])
         except:
             return jsonify({'message':'dip and strike should be integer.'}), 400
-        filename = plot_that(dip, strike)
-        filepath = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'], filename)
+        filename = async_plot(dip, strike)
+        #filename = plot_that(dip, strike)
+        #filepath = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'], filename)
         response = Response(
-                response=json.dumps({'filepath' :filepath}),
+                response=json.dumps({'filepath' :filename}),
                 mimetype="application/json",
                 status=201
                 )
@@ -73,5 +80,15 @@ def plot():
             )
     return response
 
+@app.route('/download/', methods=['GET'])
+@app.route('/download/<path:filename>', methods=['GET'])
+def download(filename=None):
+    if filename:
+        if os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], filename)):
+            return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+        else:
+            return jsonify({'message':"File '{}' does not exist.".format(filename)}), 404
+    return jsonify({'message':'filename cannot left be blank!'}), 400
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
