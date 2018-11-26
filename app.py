@@ -1,47 +1,17 @@
 import json
 import os
-from hashlib import md5
-from threading import Thread
 
-import mplstereonet
 from flask import (Flask, Response, jsonify, request, send_from_directory,
                    url_for)
-from matplotlib import pyplot as plt
+
+from utils import random_name, plot_that, async_plot
 
 app = Flask(__name__)
 
 app.config['UPLOAD_FOLDER'] = 'uplodas'
 app.config['DEBUG'] = False
 
-image_format = 'png'
-
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-def random_name(dip, strike):
-    """Return picture absolute path and also filename"""
-    filename = md5('{}{}'.format(dip, strike).encode('utf-8')).hexdigest()
-    filename = filename + '.' + image_format
-    picture_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    return picture_path, filename
-
-def async_plot(dip, strike):
-    picture_path, filename = random_name(dip, strike)
-    Thread(target=plot_that, args=(dip, strike, picture_path,)).start()
-    return filename
-
-def plot_that(dip, strike, picture_path):
-    """ Plot the figure and save into app.config['UPLOAD_FOLDER'] directory """
-    fig = plt.figure()
-    ax = fig.add_subplot(121, projection='stereonet')
-    strike, dip = strike, dip
-    ax.plane(strike, dip, 'g-', linewidth=2)
-    ax.pole(strike, dip, 'g^', markersize=18)
-    ax.rake(strike, dip, -25)
-    ax.grid()
-    #picture_path, filename = random_name()
-    plt.close('all')
-    fig.savefig(picture_path, dpi=200, format=image_format)
-    #return filename
 
 @app.route('/', methods=['GET'])
 def index():
@@ -54,6 +24,7 @@ def index():
     response = jsonify(output)
     return response
 
+@app.route('/plot/', methods=['POST'])
 @app.route('/plot', methods=['POST'])
 def plot():
     """GET dip and strike from the user and save the output"""
@@ -68,7 +39,7 @@ def plot():
         #filename = plot_that(dip, strike)
         #filepath = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'], filename)
         response = Response(
-                response=json.dumps({'filepath' :filename}),
+                response=json.dumps({'filename': filename}),
                 mimetype="application/json",
                 status=201
                 )
@@ -76,7 +47,7 @@ def plot():
         response = Response(
             mimetype="application/json",
             response=json.dumps({'message': 'dip and strike cannot left be blank!'}),
-            status=404
+            status=400
             )
     return response
 
