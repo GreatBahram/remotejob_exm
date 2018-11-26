@@ -28,11 +28,18 @@ def index():
 @app.route('/plot', methods=['POST'])
 def plot():
     """GET dip and strike from the user and save the output"""
+
     needed = ['dip', 'strike']
-    if all([key in request.form for key in needed]):
+
+    if request.content_type == 'application/json':
+        data = request.get_json(force=True)
+    else:
+        data = request.form
+
+    if all([key in data for key in needed]):
         try:
-            dip = int(request.form['dip'])
-            strike = int(request.form['strike'])
+            dip = int(data.get('dip'))
+            strike = int(data.get('strike'))
         except:
             return jsonify({'message':'dip and strike should be integer.'}), 400
         filename = async_plot(dip, strike)
